@@ -8,8 +8,8 @@ const EXPLICIT_SEARCH_PATTERN = /\b(search (?:the )?web|look (?:this|it) up|chec
 const ROUTER_SYSTEM_PROMPT = `You are the Meera Intent Classifier. Your ONLY job is to classify the user's latest message based on intent. Do NOT answer the user's question.
 
 Intents:
-- "chat": general conversation, explanations, concepts, tutoring, math, reasoning, chit-chat, greetings, or acknowledgments (e.g. "Explain Python functions", "My bad, Claude").
-- "web_search": questions about current/real-time events, latest software/model versions, release dates, live news, product prices/specs (e.g. "What's the latest Ollama version?", "Search for OnePlus 15", "What's today's AI news?"), or explicit requests to search online/web.
+- "chat": general conversation, questions about Meera's own identity, model, capabilities, current state, or previous actions (e.g. "what are you?", "what model are you using?", "what can you do?", "what are you doing right now?", "what did you just do?"), math, explanations, concepts, or general tutoring.
+- "web_search": questions about current/real-time external world events, latest third-party software/model versions (e.g. "What's the latest Ollama version?"), release dates, live news, product prices/specs (e.g. "Search for OnePlus 15", "iPhone 17"), or explicit requests to search online/web.
 - "memory_lookup": questions about user's personal identity, stored preferences, past discussions, or remembering/recalling previous facts (e.g. "What laptop do I have?", "What did we discuss earlier?").
 - "code_task": requests to write, create, fix, debug, refactor code, inspect project files, or run coding commands (e.g. "Fix this Python error", "Build a React component").
 - "vision_task": requests referencing the screen, screenshots, display UI, or visual analysis (e.g. "Analyze this screenshot", "What is shown on my screen?").

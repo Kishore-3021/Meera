@@ -1,47 +1,65 @@
 import { MarkdownStreamRenderer, renderMarkdown } from "./markdown.js";
 
 const C = {
-  reset: "\x1b[0m", bold: "\x1b[1m", dim: "\x1b[2m", cyan: "\x1b[36m",
-  green: "\x1b[32m", yellow: "\x1b[33m", gray: "\x1b[90m", blue: "\x1b[34m",
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  italic: "\x1b[3m",
+  cyan: "\x1b[36m",
+  brightCyan: "\x1b[96m",
+  green: "\x1b[32m",
+  brightGreen: "\x1b[92m",
+  yellow: "\x1b[33m",
+  gray: "\x1b[90m",
+  blue: "\x1b[34m",
+  white: "\x1b[37m",
 };
+
 const stripAnsi = (value) => value.replace(/\x1b\[[0-?]*[ -\/]*[@-~]/g, "");
 const style = (codes, value) => `${codes}${value}${C.reset}`;
 
-function line(totalWidth, left, right = "") {
-  const gap = Math.max(1, totalWidth - 4 - stripAnsi(left).length - stripAnsi(right).length);
-  return `│ ${left}${" ".repeat(gap)}${right} │`;
-}
+const ASCII_LOGO = [
+  "  ███╗   ███╗███████╗███████╗██████╗  █████╗ ",
+  "  ████╗ ████║██╔════╝██╔════╝██╔══██╗██╔══██╗",
+  "  ██╔████╔██║█████╗  █████╗  ██████╔╝███████║",
+  "  ██║╚██╔╝██║██╔══╝  ██╔══╝  ██╔══██╗██╔══██║",
+  "  ██║ ╚═╝ ██║███████╗███████╗██║  ██║██║  ██║",
+  "  ╚═╝     ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝",
+];
 
 export class MeeraTerminal {
   constructor(output) {
     this.output = output;
     this.interactive = Boolean(output.isTTY);
     this.ollamaStatus = "Online";
-    this.webStatus = "Ready";
+    this.webStatus = "Online";
+    this.toolsCount = 5;
   }
 
-  write(text) { this.output.write(text); }
-
-  width() {
-    return Math.max(48, Math.min(this.output.columns || 72, 92));
+  write(text) {
+    this.output.write(text);
   }
 
   header() {
-    const width = this.width();
-    const model = style(C.dim, "Qwen 2.5 · Ollama");
-    const live = style(C.green, "●") + ` ${this.ollamaStatus}`;
-    const webColor = this.webStatus === "Offline" ? C.yellow : C.green;
-    const web = `Web ${style(webColor, "●")} ${this.webStatus}`;
-    this.write(`${style(C.cyan, `╭${"─".repeat(width - 2)}╮`)}\n`);
-    this.write(`${style(C.cyan, line(width, style(C.bold + C.cyan, "MEERA"), model))}\n`);
-    this.write(`${style(C.cyan, line(width, live, web))}\n`);
-    this.write(`${style(C.cyan, `╰${"─".repeat(width - 2)}╯`)}\n\n`);
+    this.write("\n");
+    for (const line of ASCII_LOGO) {
+      this.write(`${style(C.cyan + C.bold, line)}\n`);
+    }
+    this.write(`  ${style(C.dim, "Local AI · Qwen · Ollama")}\n\n`);
+
+    const ollamaDot = this.ollamaStatus === "Online" ? style(C.green, "●") : style(C.yellow, "●");
+    const webDot = this.webStatus === "Offline" ? style(C.yellow, "●") : style(C.green, "●");
+    const toolsDot = style(C.green, "●");
+
+    this.write(`  ${ollamaDot} ${style(C.white, "Ollama")}   ${webDot} ${style(C.white, "Web")}   ${toolsDot} ${style(C.white, `${this.toolsCount} Tools`)}\n\n`);
   }
 
   start() {
-    if (this.interactive) this.write("\x1b[2J\x1b[H");
+    if (this.interactive) {
+      this.write("\x1b[2J\x1b[H");
+    }
     this.header();
-    this.note("Local chat · /help for commands");
+    this.note("Local chat · Type /help for commands, /about for system architecture");
   }
 
   redraw(transcript = []) {
@@ -52,11 +70,12 @@ export class MeeraTerminal {
       if (item.type === "user") this.user(item.text);
       if (item.type === "assistant") this.answer(item.text);
       if (item.type === "sources") this.sources(item.results);
+      if (item.type === "note") this.note(item.text);
     }
   }
 
   user(text) {
-    this.write(`${style(C.bold, "›")} ${text}\n\n`);
+    this.write(`${style(C.bold + C.brightCyan, "›")} ${style(C.bold, text)}\n\n`);
   }
 
   note(text) {
@@ -102,16 +121,41 @@ export class MeeraTerminal {
     this.write("\n");
   }
 
-  status({ model, available }) {
-    this.write(`  ${style(C.bold, "Status")}\n`);
-    this.write(`  Ollama  ${available ? style(C.green, "● Online") : style(C.yellow, "● Model unavailable")}\n`);
-    this.write(`  Model   ${model}\n`);
-    this.write(`  Web     ${this.webStatus === "Offline" ? style(C.yellow, "● Offline") : style(C.green, `● ${this.webStatus}`)}\n\n`);
+  status({ model, ollamaOnline, searxngOnline, toolsCount, currentTask, lastAction, lastActionResult }) {
+    this.write(`  ${style(C.bold + C.cyan, "MEERA")}\n`);
+    this.write(`  ${style(C.dim, "Model      ")} ${model}\n`);
+    this.write(`  ${style(C.dim, "Ollama     ")} ${ollamaOnline ? style(C.green, "● Online") : style(C.yellow, "● Offline")}\n`);
+    this.write(`  ${style(C.dim, "SearXNG    ")} ${searxngOnline ? style(C.green, "● Online") : style(C.yellow, "● Offline")}\n`);
+    this.write(`  ${style(C.dim, "Tools      ")} ${toolsCount ?? this.toolsCount} available\n`);
+    this.write(`  ${style(C.dim, "Task       ")} ${currentTask || "Idle"}\n`);
+    const lastDisplay = lastAction && lastAction !== "None" ? `${lastAction} (${lastActionResult || "Success"})` : "None";
+    this.write(`  ${style(C.dim, "Last       ")} ${lastDisplay}\n\n`);
+  }
+
+  about({ model, ollamaOnline, searxngOnline, capabilities = [] }) {
+    this.write(`  ${style(C.bold + C.cyan, "MEERA — Local AI Assistant")}\n`);
+    this.write(`  ${style(C.dim, "Identity:     ")} Meera\n`);
+    this.write(`  ${style(C.dim, "Architecture: ")} Local Orchestration on Ollama + SearXNG + SQLite\n`);
+    this.write(`  ${style(C.dim, "Model:        ")} ${model}\n`);
+    this.write(`  ${style(C.dim, "Ollama:       ")} ${ollamaOnline ? style(C.green, "● Online") : style(C.yellow, "● Offline")}\n`);
+    this.write(`  ${style(C.dim, "SearXNG:      ")} ${searxngOnline ? style(C.green, "● Online") : style(C.yellow, "● Offline")}\n\n`);
+
+    this.write(`  ${style(C.bold, "Available Capabilities:")}\n`);
+    for (const cap of capabilities) {
+      this.write(`  • ${style(C.cyan, cap.name)}: ${style(C.dim, cap.description)}\n`);
+    }
+    this.write("\n");
   }
 
   help() {
     this.write(`${style(C.bold, "  Commands")}\n`);
-    this.write("  /help    Show commands\n  /clear   Clear the visible chat and session history\n  /status  Check Ollama and web status\n  /model   Show the active model\n  /exit    Exit Meera\n\n");
+    this.write("  /help       Show available commands\n");
+    this.write("  /about      Show Meera identity, architecture & capabilities\n");
+    this.write("  /status     Check Ollama, SearXNG, tools and task status\n");
+    this.write("  /decisions  View recent intent router decisions from SQLite\n");
+    this.write("  /model      Show the active model\n");
+    this.write("  /clear      Clear conversation history and terminal screen\n");
+    this.write("  /exit       Exit Meera\n\n");
     this.write(`  ${style(C.dim, "Keys: ↑/↓ history · Ctrl+C cancel/exit · Ctrl+L redraw")}\n\n`);
   }
 }
@@ -132,7 +176,7 @@ export class PromptSession {
 
   prompt() {
     const columns = this.output.columns || 80;
-    const prefix = `${C.bold}›${C.reset} `;
+    const prefix = `${C.bold}${C.brightCyan}›${C.reset} `;
     const available = Math.max(12, columns - 3);
     const visible = this.buffer.length > available ? `…${this.buffer.slice(-(available - 1))}` : this.buffer;
     this.output.write(`\r\x1b[2K${prefix}${visible}`);
@@ -141,14 +185,20 @@ export class PromptSession {
   async submit() {
     const value = this.buffer.trim();
     this.output.write("\r\x1b[2K");
-    if (!value) { this.prompt(); return; }
+    if (!value) {
+      this.prompt();
+      return;
+    }
     if (this.history.at(-1) !== value) this.history.push(value);
     this.historyIndex = this.history.length;
     this.buffer = "";
     this.busy = true;
     const result = await this.onSubmit(value);
     this.busy = false;
-    if (result?.exit) { this.close(); return; }
+    if (result?.exit) {
+      this.close();
+      return;
+    }
     this.prompt();
   }
 
@@ -164,14 +214,41 @@ export class PromptSession {
   consume(data) {
     for (let index = 0; index < data.length; index += 1) {
       const char = data[index];
-      if (char === "\x1b" && data.slice(index, index + 3) === "\x1b[A") { index += 2; if (!this.busy) this.previous(); continue; }
-      if (char === "\x1b" && data.slice(index, index + 3) === "\x1b[B") { index += 2; if (!this.busy) this.next(); continue; }
-      if (char === "\u0003") { this.cancel(); continue; }
-      if (char === "\f") { if (!this.busy) { this.onRedraw(); this.prompt(); } continue; }
+      if (char === "\x1b" && data.slice(index, index + 3) === "\x1b[A") {
+        index += 2;
+        if (!this.busy) this.previous();
+        continue;
+      }
+      if (char === "\x1b" && data.slice(index, index + 3) === "\x1b[B") {
+        index += 2;
+        if (!this.busy) this.next();
+        continue;
+      }
+      if (char === "\u0003") {
+        this.cancel();
+        continue;
+      }
+      if (char === "\f") {
+        if (!this.busy) {
+          this.onRedraw();
+          this.prompt();
+        }
+        continue;
+      }
       if (this.busy) continue;
-      if (char === "\r" || char === "\n") { this.submit(); continue; }
-      if (char === "\x7f" || char === "\b") { this.buffer = this.buffer.slice(0, -1); this.prompt(); continue; }
-      if (char >= " ") { this.buffer += char; this.prompt(); }
+      if (char === "\r" || char === "\n") {
+        this.submit();
+        continue;
+      }
+      if (char === "\x7f" || char === "\b") {
+        this.buffer = this.buffer.slice(0, -1);
+        this.prompt();
+        continue;
+      }
+      if (char >= " ") {
+        this.buffer += char;
+        this.prompt();
+      }
     }
   }
 
@@ -196,7 +273,12 @@ export class PromptSession {
       this.input.resume();
       this.input.setEncoding("utf8");
       this.listener = (data) => this.consume(data);
-      this.resizeListener = () => { if (!this.busy) { this.onRedraw(); this.prompt(); } };
+      this.resizeListener = () => {
+        if (!this.busy) {
+          this.onRedraw();
+          this.prompt();
+        }
+      };
       this.input.on("data", this.listener);
       process.on("SIGWINCH", this.resizeListener);
       this.output.on("resize", this.resizeListener);

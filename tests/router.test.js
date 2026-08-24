@@ -2,11 +2,16 @@ import { routeIntent } from "../src/router.js";
 import { getRecentDecisions } from "../src/db.js";
 
 const singleTurnTestCases = [
-  // 1. Chat
+  // 1. Chat & Self-Awareness
   { input: "Explain Python functions", expected: "chat" },
   { input: "Explain Python classes", expected: "chat" },
   { input: "What is a MOSFET?", expected: "chat" },
   { input: "My bad, Claude", expected: "chat" },
+  { input: "what are you?", expected: "chat" },
+  { input: "what model are you using?", expected: "chat" },
+  { input: "what can you do?", expected: "chat" },
+  { input: "what are you doing right now?", expected: "chat" },
+  { input: "what did you just do?", expected: "chat" },
 
   // 2. Web Search
   { input: "What's the latest Ollama version?", expected: "web_search" },
@@ -46,7 +51,7 @@ const followUpTestCases = [
 
 async function runTests() {
   console.log("==========================================================");
-  console.log(" Running Meera Phase 1 Router Test Suite");
+  console.log(" Running Meera Test Suite (Intent Router + Self-Awareness)");
   console.log("==========================================================\n");
 
   let passed = 0;
@@ -86,10 +91,10 @@ async function runTests() {
   console.table(recent);
 
   if (accuracy < 90.0) {
-    console.error("Phase 1 Exit Criteria Failed: Accuracy < 90%");
+    console.error("Test Suite Failed: Accuracy < 90%");
     process.exit(1);
   } else {
-    console.log("Phase 1 Exit Criteria Met (≥90% Accuracy)!");
+    console.log("Test Suite Met (≥90% Accuracy)!");
   }
 }
 
