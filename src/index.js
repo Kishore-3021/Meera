@@ -3,6 +3,8 @@ import { stdin as input, stdout as output } from "node:process";
 import { DEFAULT_MODEL, SYSTEM_PROMPT } from "./config.js";
 import { getOllamaStatus, streamChat } from "./ollama.js";
 import { classifyLiveRequest, getClockContext, getWebContext } from "./live-info.js";
+import { routeIntent } from "./router.js";
+import { getRecentDecisions } from "./db.js";
 import { MeeraTerminal, PromptSession } from "./terminal-ui.js";
 
 const model = DEFAULT_MODEL;
@@ -33,6 +35,21 @@ async function respond(message) {
     return {};
   }
   if (message === "/model") { ui.note(`Active model: ${model}`); return {}; }
+  if (message === "/decisions") {
+    try {
+      const decisions = getRecentDecisions(5);
+      if (!decisions.length) {
+        ui.note("No routing decisions logged yet.");
+      } else {
+        ui.note("Recent Intent Router Decisions (SQLite):\n" +
+          decisions.map((d, i) => `  ${i + 1}. [${d.routed_intent}] "${d.user_input.slice(0, 35)}" (conf: ${d.confidence.toFixed(2)}, ${d.execution_ms}ms)`).join("\n")
+        );
+      }
+    } catch (e) {
+      ui.note(`Could not read decision log: ${e.message}`);
+    }
+    return {};
+  }
   if (message === "/status") {
     try {
       const status = await getOllamaStatus(model);
@@ -54,16 +71,23 @@ async function respond(message) {
   let route = { type: "none" };
 
   try {
-    route = classifyLiveRequest(message, previousUserMessage());
-    if (route.type === "clock") {
-      liveContext = getClockContext(route).context;
+    // 1. Check local clock intent directly
+    const clockCheck = classifyLiveRequest(message, previousUserMessage());
+    if (clockCheck.type === "clock") {
+      liveContext = getClockContext(clockCheck).context;
       ui.clockStatus();
-    } else if (route.type === "web") {
-      ui.searchStart();
-      const web = await getWebContext(route, { signal: controller.signal });
-      sources = web.results;
-      liveContext = web.context;
-      ui.searchSuccess(sources.length);
+    } else {
+      // 2. Intent Router Classification
+      const decision = await routeIntent(message, { history, signal: controller.signal });
+      route = { type: decision.intent, ...decision };
+
+      if (decision.needsSearch || decision.intent === "web_search") {
+        ui.searchStart();
+        const web = await getWebContext(decision.searchQuery || message, { signal: controller.signal });
+        sources = web.results;
+        liveContext = web.context;
+        ui.searchSuccess(sources.length);
+      }
     }
 
     if (controller.signal.aborted) {
@@ -87,9 +111,7 @@ async function respond(message) {
   } catch (error) {
     if (controller.signal.aborted || error.name === "AbortError") {
       ui.note("Generation cancelled.");
-    } else if (route.type === "web") {
-      // A fresh-information request must never fall through to the model if its
-      // live source could not be fetched.
+    } else if (route.needsSearch || route.type === "web_search") {
       ui.searchFailure(error.message);
       ui.note("I can't verify current information right now, so I won't guess.");
     } else {
