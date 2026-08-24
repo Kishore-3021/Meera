@@ -1,0 +1,13 @@
+{
+  "name": "meera",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal terminal chat for a local Ollama model",
+  "type": "module",
+  "bin": {
+    "meera": "bin/meera.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  }
+}
