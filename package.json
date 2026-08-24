@@ -8,6 +8,7 @@
     "meera": "bin/meera.js"
   },
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node tests/router.test.js"
   }
 }
