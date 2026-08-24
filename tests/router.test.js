@@ -1,62 +1,88 @@
 import { routeIntent } from "../src/router.js";
 import { getRecentDecisions } from "../src/db.js";
 
-const testCases = [
-  // 1. General Chat
-  { input: "Hello, who are you and how can you help me?", expected: "chat" },
-  { input: "Explain how quicksort works in simple terms", expected: "chat" },
-  { input: "What is 15% of 850?", expected: "chat" },
-  { input: "Write a short haiku about rain", expected: "chat" },
+const singleTurnTestCases = [
+  // 1. Chat
+  { input: "Explain Python functions", expected: "chat" },
+  { input: "Explain Python classes", expected: "chat" },
+  { input: "What is a MOSFET?", expected: "chat" },
+  { input: "My bad, Claude", expected: "chat" },
 
   // 2. Web Search
-  { input: "What is the current price of ASUS TUF Gaming F16 laptop?", expected: "web_search" },
-  { input: "Who won the latest Premier League match yesterday?", expected: "web_search" },
-  { input: "Search for the newest features in Node.js 24", expected: "web_search" },
-  { input: "What is the weather today in Hyderabad?", expected: "web_search" },
+  { input: "What's the latest Ollama version?", expected: "web_search" },
+  { input: "Search for OnePlus 15", expected: "web_search" },
+  { input: "What's today's AI news?", expected: "web_search" },
+  { input: "Check this on the internet", expected: "web_search" },
+  { input: "Search the web for ASUS TUF F16 laptop price", expected: "web_search" },
 
-  // 3. Code Task
-  { input: "Can you refactor src/web-search.js to handle retry logic?", expected: "code_task" },
-  { input: "Fix the syntax error in my Python script", expected: "code_task" },
-  { input: "Run git status and show uncommitted changes", expected: "code_task" },
-  { input: "Write a unit test for the router function", expected: "code_task" },
-
-  // 4. Memory Lookup
+  // 3. Memory Lookup
+  { input: "What laptop do I have?", expected: "memory_lookup" },
+  { input: "What did we discuss earlier?", expected: "memory_lookup" },
   { input: "Remember that my name is Kraven and I prefer dark theme", expected: "memory_lookup" },
-  { input: "What did I tell you about my preferred programming language?", expected: "memory_lookup" },
-  { input: "Save this note: project deadline is next Friday", expected: "memory_lookup" },
-  { input: "Recall my project settings from last session", expected: "memory_lookup" },
+
+  // 4. Code Task
+  { input: "Fix this Python error", expected: "code_task" },
+  { input: "Build a React component", expected: "code_task" },
+  { input: "Create a React component", expected: "code_task" },
+  { input: "Debug this project", expected: "code_task" },
+  { input: "Run git status and check for unstaged changes", expected: "code_task" },
 
   // 5. Vision Task
-  { input: "Take a screenshot and tell me what error is shown on screen", expected: "vision_task" },
-  { input: "Look at my screen and guide me through the next step", expected: "vision_task" },
-  { input: "Read the code currently visible in my VS Code window", expected: "vision_task" },
-  { input: "Is the submit button visible on my display?", expected: "vision_task" }
+  { input: "Analyze this screenshot", expected: "vision_task" },
+  { input: "What is shown on my screen?", expected: "vision_task" },
+  { input: "Look at my display and guide me through the next step", expected: "vision_task" }
+];
+
+const followUpTestCases = [
+  {
+    history: [
+      { role: "user", content: "Tell me about the iPhone 17 Pro." },
+      { role: "assistant", content: "The iPhone 17 Pro is Apple's upcoming flagship smartphone." }
+    ],
+    input: "What's its price?",
+    expected: "web_search"
+  }
 ];
 
 async function runTests() {
-  console.log("==================================================");
-  console.log(" Running Phase 1 Intent Router Test Suite (20 Cases)");
-  console.log("==================================================\n");
+  console.log("==========================================================");
+  console.log(" Running Meera Phase 1 Router Test Suite");
+  console.log("==========================================================\n");
 
   let passed = 0;
-  for (let i = 0; i < testCases.length; i++) {
-    const tc = testCases[i];
+  const total = singleTurnTestCases.length + followUpTestCases.length;
+
+  for (let i = 0; i < singleTurnTestCases.length; i++) {
+    const tc = singleTurnTestCases[i];
     const res = await routeIntent(tc.input);
     const isPass = res.intent === tc.expected;
     if (isPass) passed++;
 
     const statusMark = isPass ? "✓ PASS" : "✗ FAIL";
-    console.log(`[${String(i + 1).padStart(2, "0")}/20] ${statusMark} | Input: "${tc.input}"`);
-    console.log(`         → Routed: ${res.intent} (conf: ${(res.confidence * 100).toFixed(0)}%, ${res.executionMs}ms) | Expected: ${tc.expected}\n`);
+    console.log(`[${String(i + 1).padStart(2, "0")}/${total}] ${statusMark} | Input: "${tc.input}"`);
+    console.log(`         → Routed: ${res.intent} (conf: ${(res.confidence * 100).toFixed(0)}%, path: ${res.executionPath}) | Expected: ${tc.expected}\n`);
   }
 
-  const accuracy = (passed / testCases.length) * 100;
-  console.log("==================================================");
-  console.log(` Final Result: ${passed}/${testCases.length} Passed (${accuracy.toFixed(1)}% Accuracy)`);
-  console.log("==================================================\n");
+  // Run contextual follow-up test
+  for (let j = 0; j < followUpTestCases.length; j++) {
+    const ftc = followUpTestCases[j];
+    const index = singleTurnTestCases.length + j + 1;
+    const res = await routeIntent(ftc.input, { history: ftc.history });
+    const isPass = res.intent === ftc.expected;
+    if (isPass) passed++;
+
+    const statusMark = isPass ? "✓ PASS" : "✗ FAIL";
+    console.log(`[${String(index).padStart(2, "0")}/${total}] ${statusMark} | Follow-up: "${ftc.input}" (context: iPhone 17 Pro)`);
+    console.log(`         → Routed: ${res.intent} (conf: ${(res.confidence * 100).toFixed(0)}%, path: ${res.executionPath}) | Expected: ${ftc.expected}\n`);
+  }
+
+  const accuracy = (passed / total) * 100;
+  console.log("==========================================================");
+  console.log(` Final Result: ${passed}/${total} Passed (${accuracy.toFixed(1)}% Accuracy)`);
+  console.log("==========================================================\n");
 
   const recent = getRecentDecisions(5);
-  console.log("Recent 5 Decisions in SQLite `routing_decisions`:");
+  console.log("Recent 5 Decisions in SQLite `decisions` table:");
   console.table(recent);
 
   if (accuracy < 90.0) {

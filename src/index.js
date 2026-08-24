@@ -42,7 +42,7 @@ async function respond(message) {
         ui.note("No routing decisions logged yet.");
       } else {
         ui.note("Recent Intent Router Decisions (SQLite):\n" +
-          decisions.map((d, i) => `  ${i + 1}. [${d.routed_intent}] "${d.user_input.slice(0, 35)}" (conf: ${d.confidence.toFixed(2)}, ${d.execution_ms}ms)`).join("\n")
+          decisions.map((d, i) => `  ${i + 1}. [${d.intent}] "${d.user_input.slice(0, 35)}" (conf: ${(d.confidence * 100).toFixed(0)}%, path: ${d.execution_path})`).join("\n")
         );
       }
     } catch (e) {
@@ -71,19 +71,25 @@ async function respond(message) {
   let route = { type: "none" };
 
   try {
-    // 1. Check local clock intent directly
+    // 1. Fast local clock intent check
     const clockCheck = classifyLiveRequest(message, previousUserMessage());
     if (clockCheck.type === "clock") {
       liveContext = getClockContext(clockCheck).context;
       ui.clockStatus();
     } else {
-      // 2. Intent Router Classification
+      // 2. Structured Intent Router
       const decision = await routeIntent(message, { history, signal: controller.signal });
       route = { type: decision.intent, ...decision };
 
-      if (decision.needsSearch || decision.intent === "web_search") {
+      if (decision.intent === "vision_task") {
+        ui.note("Vision and screen analysis subsystems are scheduled for Phase 5.");
+      } else if (decision.intent === "memory_lookup" && history.length === 0) {
+        liveContext = "MEMORY NOTICE: Persistent episodic memory (ChromaDB) and structured recall (SQLite) will be active in Phase 2. Currently only active session history is available.";
+      } else if (decision.intent === "code_task") {
+        liveContext = "CODING AGENT NOTICE: File editing and shell execution tools will be active in Phase 4. Provide helpful code guidance or code snippets directly in your response.";
+      } else if (decision.needsSearch || decision.intent === "web_search") {
         ui.searchStart();
-        const web = await getWebContext(decision.searchQuery || message, { signal: controller.signal });
+        const web = await getWebContext(message, { signal: controller.signal });
         sources = web.results;
         liveContext = web.context;
         ui.searchSuccess(sources.length);

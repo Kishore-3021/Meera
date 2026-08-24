@@ -17,62 +17,41 @@ export function getDatabase() {
 
 function initSchema(db) {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS routing_decisions (
+    CREATE TABLE IF NOT EXISTS decisions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp TEXT NOT NULL DEFAULT (datetime('now')),
       user_input TEXT NOT NULL,
-      routed_intent TEXT NOT NULL,
+      intent TEXT NOT NULL,
       confidence REAL NOT NULL,
       needs_search INTEGER NOT NULL,
       needs_memory INTEGER NOT NULL,
-      search_query TEXT,
-      reasoning TEXT,
-      execution_ms INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS user_profile (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS facts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entity TEXT NOT NULL,
-      attribute TEXT NOT NULL,
-      value TEXT NOT NULL,
-      source TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      execution_path TEXT NOT NULL
     );
   `);
 }
 
 export function logDecision({
   userInput,
-  routedIntent,
+  intent,
   confidence,
   needsSearch,
   needsMemory,
-  searchQuery = "",
-  reasoning = "",
-  executionMs = 0,
+  executionPath = "chat",
 }) {
   try {
     const db = getDatabase();
     const insert = db.prepare(`
-      INSERT INTO routing_decisions (
-        user_input, routed_intent, confidence, needs_search, needs_memory, search_query, reasoning, execution_ms
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO decisions (
+        user_input, intent, confidence, needs_search, needs_memory, execution_path
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `);
     insert.run(
       userInput,
-      routedIntent,
+      intent,
       confidence,
       needsSearch ? 1 : 0,
       needsMemory ? 1 : 0,
-      searchQuery,
-      reasoning,
-      executionMs
+      executionPath
     );
   } catch (error) {
     console.error("Failed to log routing decision to SQLite:", error.message);
@@ -82,8 +61,8 @@ export function logDecision({
 export function getRecentDecisions(limit = 20) {
   const db = getDatabase();
   const query = db.prepare(`
-    SELECT id, timestamp, user_input, routed_intent, confidence, needs_search, needs_memory, search_query, execution_ms
-    FROM routing_decisions
+    SELECT id, timestamp, user_input, intent, confidence, needs_search, needs_memory, execution_path
+    FROM decisions
     ORDER BY id DESC
     LIMIT ?
   `);
