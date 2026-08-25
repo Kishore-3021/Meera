@@ -1,26 +1,30 @@
-# Dependencies
 node_modules/
-searxng-master/.venv/
-searxng-master/.git/
-.venv/
-venv/
-__pycache__/
-*.pyc
+.env
+.env.*
+!.env.example
 
-# Local Data and Databases
 *.db
 *.sqlite
 *.sqlite3
-.chroma/
-chroma_data/
-models/
-
-# Environment and Secrets
-.env
-.env.local
-.env.*.local
-
-# System and Temporary Files
-.DS_Store
-Thumbs.db
 *.log
+
+.venv/
+__pycache__/
+*.pyc
+
+coverage/
+dist/
+build/
+
+screenshots/
+logs/
+models/
+*.gguf
+
+.obsidian/workspace*
+.obsidian/cache/
+.obsidian/plugins/*/data.json
+
+searxng-master/.git/
+searxng-master/.venv/
+.obsidian/

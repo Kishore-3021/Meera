@@ -1,4 +1,8 @@
 import { SearXNGSearchProvider, formatSearchContext } from "./web-search.js";
+import { getOllamaStatus } from "./ollama.js";
+import { getSearxngStatus } from "./searxng.js";
+import { DEFAULT_MODEL } from "./config.js";
+import { networkInterfaces, hostname as osHostname } from "node:os";
 
 const searchProvider = new SearXNGSearchProvider();
 
@@ -174,4 +178,34 @@ ${verification}Only state product details, versions, prices, dates, or availabil
 
 ${formatSearchContext(results)}`;
   return { results, context, query: normalizedPlan.queries[0] };
+}
+
+function hasActiveNetworkInterface() {
+  const interfaces = networkInterfaces();
+  return Object.values(interfaces)
+    .flat()
+    .some((entry) => entry && !entry.internal && !entry.address.startsWith("169.254."));
+}
+
+export async function getAwarenessSnapshot() {
+  const now = new Date();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [ollama, searxng] = await Promise.allSettled([
+    getOllamaStatus(DEFAULT_MODEL),
+    getSearxngStatus(),
+  ]);
+  const ollamaOnline = ollama.status === "fulfilled" ? Boolean(ollama.value.available) : false;
+  const searxngOnline = searxng.status === "fulfilled" ? Boolean(searxng.value.reachable) : false;
+
+  return {
+    timestamp: now.toISOString(),
+    minuteKey: now.toISOString().slice(0, 16),
+    timeZone,
+    host: osHostname(),
+    networkOnline: hasActiveNetworkInterface(),
+    services: {
+      ollamaOnline,
+      searxngOnline,
+    },
+  };
 }

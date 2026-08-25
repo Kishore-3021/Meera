@@ -1,7 +1,7 @@
-# Phase 1: Orchestration Core (Intent Router) Design
+# Router Design — Reliability-First
 
 ## Objective
-Replace brittle regex/heuristic matching with a fast, deterministic, schema-constrained intent classification layer.
+Use a live registry-aware deterministic pre-check before the schema-constrained classifier. Local capabilities take precedence over web search unless the user explicitly requests the web.
 
 ---
 
@@ -11,9 +11,14 @@ Replace brittle regex/heuristic matching with a fast, deterministic, schema-cons
 Raw User Input
       │
       ▼
-Intent Classifier (Ollama format: "json", temperature: 0.1)
+Live local-capability pre-check
       │
       ▼
+Local agent route ── no LLM routing call
+       │
+       └── no match ──► Intent Classifier
+                              │
+                              ▼
 Parsed JSON: { intent, confidence, needs_search, needs_memory, extracted_subject }
       │
       ├── confidence < 0.70 ──► Fallback to direct conversational clarification
@@ -24,6 +29,8 @@ Parsed JSON: { intent, confidence, needs_search, needs_memory, extracted_subject
                                    ├── "code_task"
                                    ├── "vision_task"
                                    └── "memory_lookup"
+
+Explicit web requests override the local pre-check. A weak search result means “inconclusive,” not “does not exist.”
 ```
 
 ---

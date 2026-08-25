@@ -9,6 +9,9 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "test": "node tests/router.test.js"
+    "test": "node tests/router.test.js && node tests/reliability.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
   }
 }

@@ -1,5 +1,6 @@
 import { routeIntent } from "../src/router.js";
 import { getRecentDecisions } from "../src/db.js";
+import { detectCapabilities } from "../src/tools/registry.js";
 
 const singleTurnTestCases = [
   // 1. Chat & Self-Awareness
@@ -30,12 +31,20 @@ const singleTurnTestCases = [
   { input: "Build a React component", expected: "code_task" },
   { input: "Create a React component", expected: "code_task" },
   { input: "Debug this project", expected: "code_task" },
-  { input: "Run git status and check for unstaged changes", expected: "code_task" },
+  { input: "Run git status and check for unstaged changes", expected: "agent_task" },
 
   // 5. Vision Task
   { input: "Analyze this screenshot", expected: "vision_task" },
   { input: "What is shown on my screen?", expected: "vision_task" },
   { input: "Look at my display and guide me through the next step", expected: "vision_task" }
+];
+
+const localFirstTestCases = [
+  { input: "What are my system specs?", expected: "agent_task" },
+  { input: "How much RAM and CPU do I have?", expected: "agent_task" },
+  { input: "What is my current volume?", expected: "agent_task" },
+  { input: "Is my Wi-Fi connected?", expected: "agent_task" },
+  { input: "Show my running processes", expected: "agent_task" },
 ];
 
 const followUpTestCases = [
@@ -54,8 +63,9 @@ async function runTests() {
   console.log(" Running Meera Test Suite (Intent Router + Self-Awareness)");
   console.log("==========================================================\n");
 
+  await detectCapabilities();
   let passed = 0;
-  const total = singleTurnTestCases.length + followUpTestCases.length;
+  const total = singleTurnTestCases.length + followUpTestCases.length + localFirstTestCases.length;
 
   for (let i = 0; i < singleTurnTestCases.length; i++) {
     const tc = singleTurnTestCases[i];
@@ -66,6 +76,16 @@ async function runTests() {
     const statusMark = isPass ? "✓ PASS" : "✗ FAIL";
     console.log(`[${String(i + 1).padStart(2, "0")}/${total}] ${statusMark} | Input: "${tc.input}"`);
     console.log(`         → Routed: ${res.intent} (conf: ${(res.confidence * 100).toFixed(0)}%, path: ${res.executionPath}) | Expected: ${tc.expected}\n`);
+  }
+
+  for (let j = 0; j < localFirstTestCases.length; j++) {
+    const tc = localFirstTestCases[j];
+    const index = singleTurnTestCases.length + followUpTestCases.length + j + 1;
+    const res = await routeIntent(tc.input);
+    const isPass = res.intent === tc.expected && !res.needsSearch;
+    if (isPass) passed++;
+    console.log(`[${String(index).padStart(2, "0")}/${total}] ${isPass ? "✓ PASS" : "✗ FAIL"} | Local-first: "${tc.input}"`);
+    console.log(`         → Routed: ${res.intent} (search: ${res.needsSearch}) | Expected: ${tc.expected}, no search\n`);
   }
 
   // Run contextual follow-up test

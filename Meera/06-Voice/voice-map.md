@@ -37,3 +37,7 @@ Target Voice Selector ──► Piper TTS Voice Model ──► Audio Output
 ## Memory & Latency Footprint
 - `faster-whisper-base`: ~150 MB VRAM / RAM
 - `Piper TTS`: Runs on CPU in <100ms per utterance, avoiding VRAM contention with Ollama
+# Deferred
+
+Voice input, speech-to-text, text-to-speech, voice cloning, and multilingual
+voice are explicitly out of scope for the current implementation roadmap.

@@ -34,3 +34,9 @@ User Goal: {user_goal}
 
 Provide ONLY the single next concrete action the user should take. Do not repeat descriptive details that the user can already see.
 ```
+# Deferred
+
+Camera recognition, OCR reasoning, screen understanding, visual reasoning,
+object recognition, and computer-vision models are explicitly out of scope for
+the current implementation roadmap. Screenshot capture may remain a utility
+without interpretation.
